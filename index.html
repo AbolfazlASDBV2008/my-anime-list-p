@@ -760,19 +760,39 @@
             async renderLatestEpisode(animeId) {
                 const section = document.getElementById('latest-episode-section');
                 if (!section) return;
+                // Add a temporary loader
+                section.innerHTML = `<div class="p-4 text-center"><div class="loader mx-auto" style="width: 25px; height: 25px; border-width: 3px;"></div></div>`;
+
                 try {
-                    const result = await APIManager.fetchJikan(`anime/${animeId}/episodes`);
+                    // Fetch the first page to get pagination info
+                    let result = await APIManager.fetchJikan(`anime/${animeId}/episodes`);
+                    const lastPage = result.pagination?.last_visible_page;
+
+                    // If there's a last page and it's not the first one, fetch it
+                    if (lastPage && lastPage > 1) {
+                        result = await APIManager.fetchJikan(`anime/${animeId}/episodes?page=${lastPage}`);
+                    }
+
+                    // Now, get the last episode from the final result set
                     const lastEpisode = result.data?.pop();
+
                     if (lastEpisode) {
                         section.innerHTML = `
                             <div class="bg-accent-primary/10 border border-accent-primary/30 p-4 rounded-lg">
                                 <h4 class="font-bold text-lg mb-2 accent-primary-text">آخرین قسمت پخش شده</h4>
                                 <p class="text-sm"><strong>قسمت ${lastEpisode.mal_id}:</strong> ${lastEpisode.title}</p>
-                                <p class="text-xs text-secondary mt-1">تاریخ پخش: ${new Date(lastEpisode.aired).toLocaleDateString('fa-IR')}</p>
+                                <p class="text-xs text-secondary mt-1">تاریخ پخش: ${lastEpisode.aired ? new Date(lastEpisode.aired).toLocaleDateString('fa-IR') : 'نامشخص'}</p>
                             </div>
                         `;
+                    } else {
+                        // If no episode found, hide the section
+                        section.innerHTML = '';
                     }
-                } catch (error) { console.error("Failed to fetch latest episode:", error); }
+                } catch (error) {
+                    console.error("Failed to fetch latest episode:", error);
+                    // Hide the section on error
+                    section.innerHTML = '';
+                }
             },
             renderSubtitlesSection(data) {
                 const section = document.getElementById('subtitles-section');
